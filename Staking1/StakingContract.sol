@@ -7,8 +7,6 @@ pragma solidity ^0.8.9;
 contract StakingContract is ReentrancyGuard, Ownable {
     uint256 private constant APR = 100;
     uint256 private constant secondsInYear = 31104000;
-    //total Amouunt Staked
-    uint256 public totalStaked;
     IERC20 public stakingToken;
 
     //staker Details
@@ -33,23 +31,23 @@ contract StakingContract is ReentrancyGuard, Ownable {
         stakers[msg.sender].stakeStart = block.timestamp;
         stakers[msg.sender].timeToClaim = block.timestamp;
         stakers[msg.sender].isStaking = true;
-        totalStaked += amount;
     }
     
     function unstake() external nonReentrant {
         require(stakers[msg.sender].isStaking, "No staking");
-        require(stakingToken.balanceOf(address(this)) > stakers[msg.sender].stakedTokens, "insufficient Tokens");
+        require(stakingToken.balanceOf(address(this)) > stakers[msg.sender].stakedTokens + calculateRewards(), "insufficient Tokens");
         uint256 stakedAmount = stakers[msg.sender].stakedTokens;
-        uint256 reward = calculateRewards();
         stakers[msg.sender].stakeEnd = block.timestamp;
         stakers[msg.sender].isStaking =false;
         stakers[msg.sender].stakedTokens = 0;
-        stakingToken.transfer(msg.sender,stakedAmount + reward);
+        stakers[msg.sender].timeToClaim = block.timestamp;
+        stakingToken.transfer(msg.sender,stakedAmount + calculateRewards());
     }
 
     function claimRewards() external nonReentrant {
         require(stakers[msg.sender].stakedTokens > 0, "Invalid Transaction");
         uint256 reward = calculateRewards();
+        require(reward > 0, "insufficient Rewards");
         stakers[msg.sender].timeToClaim = block.timestamp;
         stakingToken.transfer(msg.sender,reward);
     }
@@ -63,7 +61,6 @@ contract StakingContract is ReentrancyGuard, Ownable {
         estimatedReward = (APR * stakers[msg.sender].stakedTokens)/100;
         rewardPerSec = estimatedReward / secondsInYear; 
         reward = rewardPerSec * noOfSeconds;
-        require(reward > 0, "insufficient Rewards");
         return reward;
     }
         
