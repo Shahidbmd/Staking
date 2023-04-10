@@ -35,8 +35,8 @@ contract StakingContract is ReentrancyGuard, Ownable {
     
     function unstake() external nonReentrant {
         require(stakers[msg.sender].isStaking, "No staking");
-        require(stakingToken.balanceOf(address(this)) > stakers[msg.sender].stakedTokens + calculateRewards(), "insufficient Tokens");
         uint256 stakedAmount = stakers[msg.sender].stakedTokens;
+        require(stakingToken.balanceOf(address(this)) > stakedAmount + calculateRewards(), "insufficient Tokens");
         stakers[msg.sender].stakeEnd = block.timestamp;
         stakers[msg.sender].isStaking =false;
         stakers[msg.sender].stakedTokens = 0;
