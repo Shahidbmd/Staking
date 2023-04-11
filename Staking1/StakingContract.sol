@@ -2,13 +2,17 @@
 pragma solidity ^0.8.9;
  import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
- import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
+ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract StakingContract is ReentrancyGuard, Ownable {
     uint256 private constant APR = 100;
     uint256 private constant secondsInYear = 31104000;
     IERC20 public stakingToken;
-
+    
+    //Events
+    event Staked (address indexed account, uint256 amount ,uint256 timeToStake);
+    event Unstaked (address indexed account, uint256 amount ,uint256 timeToUnstake);
+    event ClaimRewards(address indexed account, uint amount , uint256 totalRewards);
     //staker Details
     struct Staker {
         uint256 stakedTokens;
@@ -31,34 +35,43 @@ contract StakingContract is ReentrancyGuard, Ownable {
         stakers[msg.sender].stakeStart = block.timestamp;
         stakers[msg.sender].timeToClaim = block.timestamp;
         stakers[msg.sender].isStaking = true;
+        emit Staked (msg.sender, amount, block.timestamp);
     }
     
     function unstake() external nonReentrant {
         require(stakers[msg.sender].isStaking, "No staking");
         uint256 stakedAmount = stakers[msg.sender].stakedTokens;
-        require(stakingToken.balanceOf(address(this)) > stakedAmount + calculateRewards(), "insufficient Tokens");
+        uint256 rewards = calculateRewards(msg.sender);
+        require(stakingToken.balanceOf(address(this)) > stakedAmount + rewards, "insufficient Tokens");
         stakers[msg.sender].stakeEnd = block.timestamp;
         stakers[msg.sender].isStaking =false;
         stakers[msg.sender].stakedTokens = 0;
         stakers[msg.sender].timeToClaim = block.timestamp;
-        stakingToken.transfer(msg.sender,stakedAmount + calculateRewards());
+        if(rewards > 0) {
+            stakingToken.transfer(msg.sender,stakedAmount + rewards);
+        }
+        else{
+            stakingToken.transfer(msg.sender,stakedAmount);
+        } 
+        emit Unstaked (msg.sender, stakedAmount + rewards, block.timestamp);
     }
 
     function claimRewards() external nonReentrant {
-        require(stakers[msg.sender].stakedTokens > 0, "Invalid Transaction");
-        uint256 reward = calculateRewards();
-        require(reward > 0, "insufficient Rewards");
+        require(stakers[msg.sender].stakedTokens > 0, "Staking is insufficient");
+        uint256 totalReward = calculateRewards(msg.sender);
+        require(totalReward > 0, "insufficient rewards");
         stakers[msg.sender].timeToClaim = block.timestamp;
-        stakingToken.transfer(msg.sender,reward);
+        stakingToken.transfer(msg.sender,totalReward);
+        emit ClaimRewards(msg.sender,totalReward,block.timestamp);
     }
 
-    function calculateRewards() internal view returns(uint256) {
+    function calculateRewards(address account) public view returns(uint256) {
         uint256 reward;
         uint256 estimatedReward;
         uint rewardPerSec;
         uint256 noOfSeconds;
-        noOfSeconds = block.timestamp - stakers[msg.sender].timeToClaim;
-        estimatedReward = (APR * stakers[msg.sender].stakedTokens)/100;
+        noOfSeconds = block.timestamp - stakers[account].timeToClaim;
+        estimatedReward = (APR * stakers[account].stakedTokens)/100;
         rewardPerSec = estimatedReward / secondsInYear; 
         reward = rewardPerSec * noOfSeconds;
         return reward;
@@ -67,7 +80,6 @@ contract StakingContract is ReentrancyGuard, Ownable {
     function withdraw() external onlyOwner {
          uint256 balance = stakingToken.balanceOf(address(this));
         require(balance > 0,"insufficient Funds");
-       
         stakingToken.transfer(msg.sender,balance);
     }
 }
