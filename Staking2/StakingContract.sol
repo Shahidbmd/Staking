@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
 contract StakingContract is ERC721Holder {
 
  uint256 constant APR = 150;
+ uint256 constant secondsInYear = 31536000;
  uint256 constant minDuration = 120 seconds;
  uint256 constant tokensToStake = 1500 *10 **18;
  IERC721 private NFT;
@@ -81,8 +82,8 @@ contract StakingContract is ERC721Holder {
 
  function _calculateRewards(address account) public view returns(uint256){
      Staker memory staker = stakersDetails[account];
-    uint256 estimatedRewards = (150 * staker.tokenStaked) /100 ;
-    uint256 rewardPerSec = estimatedRewards / 31536000 ;
+    uint256 estimatedRewards = (APR * staker.tokenStaked) /100 ;
+    uint256 rewardPerSec = estimatedRewards / secondsInYear ;
     uint256 rewards = rewardPerSec * (block.timestamp - staker.claimTime);
     return rewards;
  }
