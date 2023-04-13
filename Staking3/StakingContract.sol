@@ -72,6 +72,7 @@ contract StakingContract is ERC721Holder,ReentrancyGuard {
 
  function unstake(uint256 _stakedId) external nonReentrant {
     Staker memory staker = stakersDetails[msg.sender][_stakedId];
+    require(staker.stakeTime != 0, "Have not Staked ");
     require(block.timestamp  >= staker.stakeTime + minStakingDuration, "Can't unstake now");
     uint256 rewardsCalculated = _calculateRewards(msg.sender, _stakedId);
     stakersDetails[msg.sender][_stakedId] = stakersDetails[msg.sender][stakersDetails[msg.sender].length - 1];
@@ -87,6 +88,7 @@ contract StakingContract is ERC721Holder,ReentrancyGuard {
  }
 
  function claimRewards(uint256 _stakedId) public nonReentrant {
+    require(staker.stakeTime != 0, "Have not Staked ");
     uint256 totalRewards = _calculateRewards(msg.sender, _stakedId);
     _greaterThanZero(totalRewards);
     stakersDetails[msg.sender][_stakedId].rewardClaimTime = block.timestamp;
