@@ -48,7 +48,7 @@ contract StakingContract is ERC721Holder {
 
  function stake(uint256 _nftId , uint256 _tokensToStake) public {
     _greaterThanZero(_nftId);
-    require(_tokensToStake == tokensToStake , "Invalid Staking Tokens");
+    require(_tokensToStake >= tokensToStake , "Invalid Staking Tokens");
     _nftTransfer(msg.sender,address(this), _nftId);
     RewardTransferFrom(msg.sender, address(this), _tokensToStake);
     stakersDetails[msg.sender] = Staker({stakeTime : block.timestamp , unstakeTime : 0,
